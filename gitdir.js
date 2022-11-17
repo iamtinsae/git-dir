@@ -126,6 +126,7 @@ const downloadDirectory = async ({ user, repository, ref, dir, token }) => {
     console.warn(error.message);
     abortController.abort();
   });
+  progressBar.stop();
 
   failedDownloads.forEach((file) =>
     console.warn(`Downloading ${file.path} failed!.`)
@@ -160,19 +161,13 @@ async function main() {
     return process.exit(1);
   }
 
-  const {
-    full_name,
-    description,
-    stargazers_count,
-    language,
-    license: { name } = {},
-  } = data;
+  const { full_name, description, stargazers_count, language, license } = data;
 
   console.log(`Repository Name:\t${full_name}
 Description:\t\t${description}
 Stars:\t\t\t${stargazers_count}
 Primary Language:\t${language}
-License:\t\t${name}
+License:\t\t${license ? license.name : "None"}
   `);
 
   console.log("Getting repo directory info...");
