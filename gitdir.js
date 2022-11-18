@@ -112,6 +112,7 @@ const downloadDirectory = async ({ user, repository, ref, dir, token }) => {
       },
       (err) => {
         if (err) {
+          failedDownloads.push(file);
           console.warn(`Downloading ${file.path} failed. Retrying...`);
           throw new Error(`Downloading ${file.path} failed!`);
         }
