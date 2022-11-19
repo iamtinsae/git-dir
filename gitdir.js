@@ -1,3 +1,4 @@
+#!/usr/bin/node
 import fetch from "node-fetch";
 import cliProgress from "cli-progress";
 import fs from "fs";
@@ -7,7 +8,7 @@ import pRetry from "p-retry";
 
 const URL_REGEX = /^[/]([^/]+)[/]([^/]+)[/]tree[/]([^/]+)[/](.*)/;
 
-const githubApi = async (endpoint, token, signal) => {
+const githubApi = async (endpoint, token) => {
   const resp = await fetch(`https://api.github.com/repos/${endpoint}`, {
     headers: {
       Authorization: token ? `Bearer ${token}` : null,
@@ -42,7 +43,7 @@ const getContentFromUrl = async (url, token, signal) => {
     headers: {
       Authorization: token ? `Bearer ${token}` : null,
     },
-    signal: signal || new AbortController().signal,
+    signal,
   });
 
   if (resp.status !== 200) {
@@ -138,14 +139,16 @@ const getRepoInfo = async (repo) => {
   return githubApi(repo);
 };
 
-async function main() {
-  const args = process.argv.splice(2);
+async function main(url) {
+  let parsedUrl;
 
-  const parsedUrl = new URL(args[0]);
-
-  if (!parsedUrl) {
-    console.warn("[URL] is required!");
+  try {
+    parsedUrl = new URL(url);
+  } catch {
+    console.warn(`Invalid url \`${url}\` given!`);
+    return;
   }
+
   const token = process.env["TOKEN"];
 
   if (!token)
@@ -187,4 +190,12 @@ License:\t\t${license ? license.name : "None"}
   });
 }
 
-main();
+const args = process.argv.slice(2);
+
+if (!args.length) {
+  console.warn("URLs must be provided.");
+}
+
+args.forEach((url) => {
+  main(url);
+});
