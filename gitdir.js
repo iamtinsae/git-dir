@@ -1,10 +1,11 @@
-#!/usr/bin/node
+#!/usr/bin/env node
 import fetch from "node-fetch";
 import cliProgress from "cli-progress";
 import fs from "fs";
 import path from "path";
 import pMap from "p-map";
 import pRetry from "p-retry";
+import { ArgumentParser } from "argparse";
 
 const URL_REGEX = /^[/]([^/]+)[/]([^/]+)[/]tree[/]([^/]+)[/](.*)/;
 
@@ -54,7 +55,14 @@ const getContentFromUrl = async (url, token, signal) => {
   return content;
 };
 
-const downloadDirectory = async ({ user, repository, ref, dir, token }) => {
+const downloadDirectory = async ({
+  user,
+  repository,
+  ref,
+  dir,
+  token,
+  outputDir,
+}) => {
   if (!ref) ref = "HEAD";
   if (!dir.endsWith("/")) dir = `${dir}/`;
 
@@ -91,8 +99,8 @@ const downloadDirectory = async ({ user, repository, ref, dir, token }) => {
   });
 
   const downloadFile = async (file) => {
-    const dir = path.dirname(file.path);
-    fs.mkdirSync(dir, { recursive: true });
+    const fullPath = path.join(outputDir, file.path);
+    fs.mkdirSync(path.dirname(fullPath), { recursive: true });
     const blob = await pRetry(
       () => getContentFromUrl(file.url, token, abortController.signal),
       {
@@ -106,7 +114,7 @@ const downloadDirectory = async ({ user, repository, ref, dir, token }) => {
     );
 
     fs.writeFile(
-      `${file.path}`,
+      `${fullPath}`,
       blob,
       {
         encoding: "base64",
@@ -139,7 +147,7 @@ const getRepoInfo = async (repo) => {
   return githubApi(repo);
 };
 
-async function main(url) {
+async function download(url, outputDir) {
   let parsedUrl;
 
   try {
@@ -176,7 +184,7 @@ License:\t\t${license ? license.name : "None"}
 
   console.log("Getting repo directory info...");
 
-  if (fs.existsSync(dir)) {
+  if (fs.existsSync(path.join(outputDir, dir))) {
     console.warn(`A folder already exists with name ${dir}.\nExiting...`);
     process.exit(1);
   }
@@ -187,15 +195,26 @@ License:\t\t${license ? license.name : "None"}
     ref,
     dir,
     token,
+    outputDir,
   });
 }
 
-const args = process.argv.slice(2);
-
-if (!args.length) {
-  console.warn("URLs must be provided.");
-}
-
-args.forEach((url) => {
-  main(url);
+const parser = new ArgumentParser({
+  description: "Download any public github repo directory.",
 });
+
+parser.add_argument("urls", {
+  type: String,
+  nargs: "+",
+  help: "List of urls",
+});
+
+parser.add_argument("-o", "--out", {
+  type: String,
+  help: "Output directory",
+  default: process.cwd(),
+});
+
+const args = parser.parse_args();
+
+args.urls.forEach((url) => download(url, args.out));
