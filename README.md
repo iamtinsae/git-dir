@@ -1,2 +1,2 @@
 # git-dir
-Download any public github repo directory.
+Download any public github repo directory from the cli.
